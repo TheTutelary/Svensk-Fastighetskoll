@@ -46,6 +46,15 @@ export function ReportView({ report }: ReportViewProps) {
     return <Building2 className="h-5 w-5" />;
   };
 
+  const SourceBadge = ({ source }: { source?: string }) => {
+    if (!source) return null;
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-500 border border-blue-100 ml-2 uppercase tracking-tighter">
+        Source: {source}
+      </span>
+    );
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -58,19 +67,29 @@ export function ReportView({ report }: ReportViewProps) {
         
         <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
           <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium uppercase tracking-wide">
-              <span>{report.propertyType}</span>
+            <div className="flex items-center flex-wrap gap-2 text-sm text-gray-500 font-medium uppercase tracking-wide">
+              <span className="flex items-center">
+                {report.propertyType}
+                <SourceBadge source={report.propertyTypeSource} />
+              </span>
               <span>•</span>
-              <span>{report.municipality}</span>
+              <span className="flex items-center">
+                {report.municipality}
+                <SourceBadge source={report.municipalitySource} />
+              </span>
               {report.buildYear && (
                 <>
                   <span>•</span>
-                  <span>Built {report.buildYear}</span>
+                  <span className="flex items-center">
+                    Built {report.buildYear}
+                    <SourceBadge source={report.buildYearSource} />
+                  </span>
                 </>
               )}
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight flex items-center flex-wrap">
               {report.address}
+              <SourceBadge source={report.addressSource} />
             </h1>
             <p className="text-gray-600 max-w-2xl text-lg leading-relaxed">
               {report.executiveSummary}
@@ -90,9 +109,16 @@ export function ReportView({ report }: ReportViewProps) {
           }`}>
             Rec: {report.recommendation}
           </div>
-          <div className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
+          <div className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 flex items-center">
             Est. Value: {report.valuation.estimatedFairValue}
+            <SourceBadge source="Automated Analysis" />
           </div>
+          {report.livingArea && (
+             <div className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 flex items-center">
+               Area: {report.livingArea}
+               <SourceBadge source={report.livingAreaSource} />
+             </div>
+          )}
         </div>
       </div>
 

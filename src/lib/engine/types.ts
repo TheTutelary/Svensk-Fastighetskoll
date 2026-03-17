@@ -31,11 +31,17 @@ export interface SourceInfo {
 
 export interface PropertyReport {
   address: string;
+  addressSource?: string;
   propertyType: string;
+  propertyTypeSource?: string;
   municipality: string;
+  municipalitySource?: string;
   buildYear?: number;
+  buildYearSource?: string;
   livingArea?: string;
+  livingAreaSource?: string;
   plotArea?: string;
+  plotAreaSource?: string;
   status: 'For Sale' | 'Coming Soon' | 'Sold' | 'Unknown';
   recommendation: 'BUY' | 'NEGOTIATE' | 'AVOID';
   executiveSummary: string;
