@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Loader2, AlertCircle, ArrowRight, Building, Sparkles, MapPin, ArrowLeft } from 'lucide-react';
+import { Search, Loader2, AlertCircle, ArrowRight, Building, Sparkles, MapPin, ArrowLeft, CheckCircle2, Clock } from 'lucide-react';
 import { ReportView } from '@/components/analysis/ReportView';
 import { PropertyReport } from '@/lib/engine/types';
 
@@ -10,6 +10,13 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
+  const [scannedSites, setScannedSites] = useState<{name: string, status: 'pending' | 'scanning' | 'done'}[]>([
+    { name: 'Hemnet', status: 'pending' },
+    { name: 'Booli', status: 'pending' },
+    { name: 'Fastighetsbyrån', status: 'pending' },
+    { name: 'Svensk Fast', status: 'pending' },
+    { name: 'Mäklarhuset', status: 'pending' },
+  ]);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<PropertyReport | null>(null);
   const [selectionOptions, setSelectionOptions] = useState<any[] | null>(null);
@@ -24,13 +31,22 @@ export default function Home() {
     setReport(null);
     setSelectionOptions(null);
     
-    // Simulate steps for better UX
-    setLoadingStep('Searching across Hemnet, Booli & Brokers...');
+    // Reset sites
+    setScannedSites(prev => prev.map(s => ({ ...s, status: 'pending' })));
+    setLoadingStep('Initializing multi-site search engine...');
     
     try {
-      setTimeout(() => setLoadingStep('Extracting Property Details...'), 1500);
-      setTimeout(() => setLoadingStep('Analyzing Building Stats...'), 3000);
-      setTimeout(() => setLoadingStep('Calculating Rule-Based Score...'), 4500);
+      // Simulate scanning progress for UX confidence
+      const updateSite = (name: string, status: 'scanning' | 'done') => {
+        setScannedSites(prev => prev.map(s => s.name === name ? { ...s, status } : s));
+      };
+
+      setTimeout(() => { updateSite('Hemnet', 'scanning'); setLoadingStep('Scanning Hemnet for active listings...'); }, 500);
+      setTimeout(() => { updateSite('Hemnet', 'done'); updateSite('Booli', 'scanning'); setLoadingStep('Scanning Booli for historical and active data...'); }, 2000);
+      setTimeout(() => { updateSite('Booli', 'done'); updateSite('Fastighetsbyrån', 'scanning'); setLoadingStep('Checking Broker databases...'); }, 4000);
+      setTimeout(() => { updateSite('Fastighetsbyrån', 'done'); updateSite('Svensk Fast', 'scanning'); }, 5500);
+      setTimeout(() => { updateSite('Svensk Fast', 'done'); updateSite('Mäklarhuset', 'scanning'); }, 7000);
+      setTimeout(() => { updateSite('Mäklarhuset', 'done'); setLoadingStep('Aggregating results and calculating score...'); }, 8500);
 
       const response = await fetch('/api/analyze', {
         method: 'POST',
@@ -174,15 +190,36 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center space-y-6"
+            className="flex flex-col items-center space-y-8 w-full max-w-md"
           >
             <div className="relative">
               <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 animate-pulse" />
               <Loader2 className="h-16 w-16 text-blue-600 animate-spin relative z-10" />
             </div>
+            
             <div className="text-center space-y-2">
               <h3 className="text-xl font-semibold text-gray-900">{loadingStep}</h3>
-              <p className="text-gray-500">This usually takes about 10-15 seconds.</p>
+              <p className="text-gray-500 text-sm">Aggregating live data from Swedish databases...</p>
+            </div>
+
+            <div className="w-full bg-white rounded-2xl border p-4 shadow-sm space-y-3">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Scanning Progress</p>
+              {scannedSites.map((site, i) => (
+                <div key={i} className="flex items-center justify-between py-1 px-1">
+                   <div className="flex items-center gap-3">
+                      {site.status === 'done' ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      ) : site.status === 'scanning' ? (
+                        <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-gray-300" />
+                      )}
+                      <span className={`text-sm font-medium ${site.status === 'pending' ? 'text-gray-400' : 'text-gray-700'}`}>{site.name}</span>
+                   </div>
+                   {site.status === 'done' && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">SEARCHED</span>}
+                   {site.status === 'scanning' && <span className="text-[10px] font-bold text-blue-600 animate-pulse">SCANNING...</span>}
+                </div>
+              ))}
             </div>
           </motion.div>
         )}

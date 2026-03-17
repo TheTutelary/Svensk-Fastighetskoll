@@ -7,6 +7,13 @@ export interface ScrapedData {
   ldJson?: any;
   rawText?: string;
   url: string;
+  address?: string;
+  price?: string;
+  type?: string;
+  area?: string;
+  rooms?: string;
+  buildYear?: string;
+  municipality?: string;
 }
 
 export async function fetchPropertyData(url: string): Promise<ScrapedData> {
@@ -16,7 +23,7 @@ export async function fetchPropertyData(url: string): Promise<ScrapedData> {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
     const response = await fetch(url, {
       headers: {
@@ -46,19 +53,52 @@ export async function fetchPropertyData(url: string): Promise<ScrapedData> {
     $('script[type="application/ld+json"]').each((_, el) => {
       try {
         const json = JSON.parse($(el).html() || '{}');
-        // Simple heuristic: if it has "address" or "offers", it's likely the property schema
-        if (json['@type'] === 'Product' || json['@type'] === 'Residence' || json['@type'] === 'SingleFamilyResidence' || json.address) {
+        if (Array.isArray(json)) {
+           const found = json.find(j => j['@type'] === 'Product' || j['@type'] === 'Residence' || j['@type'] === 'SingleFamilyResidence' || j.address);
+           if (found) ldJson = found;
+        } else if (json['@type'] === 'Product' || json['@type'] === 'Residence' || json['@type'] === 'SingleFamilyResidence' || json.address) {
           ldJson = json;
         }
-      } catch (e) {
-        // ignore parse errors
-      }
+      } catch (e) { }
     });
 
-    // Extract main text content (naive)
-    // Remove scripts, styles, etc.
+    // Specific Extraction Logic
+    let address = ldJson?.address?.streetAddress || ldJson?.name;
+    if (!address || address === title) {
+        address = title.split(' - ')[0].split(' | ')[0].trim();
+    }
+
+    let price = ldJson?.offers?.price || ldJson?.offers?.lowPrice;
+    if (!price) {
+        // Look for price patterns in text
+        const priceMatch = html.match(/(\d[\d\s]{4,})\s*(?:kr|SEK)/i);
+        if (priceMatch) price = priceMatch[1].replace(/\s/g, '');
+    }
+
+    // Site specific selectors
+    let area = '';
+    let rooms = '';
+    let buildYear = '';
+    
+    if (url.includes('hemnet.se')) {
+        area = $('.property-info__attributes-item:contains("Boarea"), .qa-living-area').text().replace('Boarea', '').trim();
+        rooms = $('.property-info__attributes-item:contains("Antal rum"), .qa-rooms').text().replace('Antal rum', '').trim();
+        buildYear = $('.property-info__attributes-item:contains("Byggår"), .qa-build-year').text().replace('Byggår', '').trim();
+    } else if (url.includes('booli.se')) {
+        area = $('[class*="LivingArea"]').text().trim();
+        rooms = $('[class*="Rooms"]').text().trim();
+        buildYear = $('[class*="ConstructionYear"]').text().trim();
+    }
+
+    // Fallback search in raw text
+    if (!buildYear) {
+        const yearMatch = html.match(/Byggår[:\s]+(\d{4})/i);
+        if (yearMatch) buildYear = yearMatch[1];
+    }
+
+    // Remove scripts, styles, etc. for cleaner rawText
     $('script, style, noscript, iframe, svg, footer, nav').remove();
-    const rawText = $('body').text().replace(/\s+/g, ' ').trim().substring(0, 15000); // Limit context window
+    const rawText = $('body').text().replace(/\s+/g, ' ').trim().substring(0, 20000);
 
     return {
       title,
@@ -66,12 +106,17 @@ export async function fetchPropertyData(url: string): Promise<ScrapedData> {
       ogImage,
       ldJson,
       rawText,
-      url
+      url,
+      address,
+      price: price?.toString(),
+      area,
+      rooms,
+      buildYear,
+      municipality: ldJson?.address?.addressLocality
     };
 
   } catch (error) {
     console.error("Scraping error:", error);
-    // Return partial data (just URL) so AI can still try
     return { url };
   }
 }
