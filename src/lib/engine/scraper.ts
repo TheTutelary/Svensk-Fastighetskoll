@@ -49,7 +49,7 @@ export async function fetchPropertyData(url: string): Promise<ScrapedData> {
     const ogImage = $('meta[property="og:image"]').attr('content');
 
     // Extract LD-JSON
-    let ldJson = null;
+    let ldJson: any = null;
     $('script[type="application/ld+json"]').each((_, el) => {
       try {
         const json = JSON.parse($(el).html() || '{}');
